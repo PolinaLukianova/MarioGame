@@ -90,6 +90,7 @@ void VertMoveObject(TObject *obj)
             {
                 brick[i].cType = '-';
                 InitObject(GetNewMoving(), brick[i].x, brick[i].y - 3, 3, 2, '$');
+                moving[movingLength - 1].vertSpeed = -0.7;
             }
 
             (*obj).y -= (*obj).vertSpeed;
