@@ -19,6 +19,33 @@ typedef struct SObject
 
 } TObject;
 
+
+void ClearMap();
+void ShowMap();
+void SetObjectPos(TObject *obj, float xPos, float yPos);
+void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHeight, char inType);
+
+void CreateLevel(int lvl);
+void PlayerDead();
+
+BOOL IsCollision(TObject o1, TObject o2);
+BOOL IsPosInMap(int x, int y);
+
+TObject *GetNewBrick();
+TObject *GetNewMoving();
+
+void VertMoveObject(TObject *obj);
+void HorisonMoveObject(TObject *obj);
+void HorisonMoveMap(float dx);
+
+void MarioCollision();
+void PutObjectOnMap(TObject obj);
+void PutScoreOnMap();
+
+void setCur(int x, int y);
+void DeleteMoving(int i);
+
+
 char map [MAP_HEIGHT][MAP_WIDTH+1];
 
 TObject mario;
@@ -33,11 +60,14 @@ int level = 1;
 int score = 0;
 int maxLvl = 0;
 
+
 void ClearMap()
 {
     for (int i = 0; i < MAP_WIDTH; i++)
         map[0][i] = ' ';
+
     map[0][MAP_WIDTH] = '\0';
+
     for (int j = 1; j < MAP_HEIGHT; j++)
         sprintf(map[j], map[0]);
 }
@@ -64,8 +94,6 @@ void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHight
     (*obj).horizSpeed = 0.2;
 }
 
-void CreateLevel(int lvl);
-
 void PlayerDead()
 {
     system("color 4F");
@@ -73,11 +101,30 @@ void PlayerDead()
     CreateLevel(level);
 }
 
-BOOL IsCollision(TObject o1, TObject o2);
+BOOL IsCollision(TObject o1, TObject o2)
+{
+    return ((o1.x + o1.width) > o2.x) && (o1.x < (o2.x + o2.width)) &&
+           ((o1.y + o1.height) > o2.y) && (o1.y < (o2.y + o2.height));
+}
 
-TObject *GetNewMoving();
+BOOL IsPosInMap(int x, int y)
+{
+    return ((x >= 0) && (x < MAP_WIDTH) && (y >= 0) && (y < MAP_HEIGHT));
+}
 
-TObject *GetNewBrick();
+TObject *GetNewBrick()
+{
+    brickLength++;
+    brick = (TObject*)realloc(brick, sizeof(*brick) * brickLength);
+    return brick + brickLength - 1;
+}
+
+TObject *GetNewMoving()
+{
+    movingLength++;
+    moving = (TObject*)realloc(moving, sizeof(*moving) * movingLength);
+    return moving + movingLength - 1;
+}
 
 void VertMoveObject(TObject *obj)
 {
@@ -114,11 +161,45 @@ void VertMoveObject(TObject *obj)
         }
 }
 
-void DeleteMoving(int i)
+void HorisonMoveObject(TObject *obj)
 {
-    movingLength--;
-    moving[i] = moving[movingLength];
-    moving = (TObject*)realloc(moving, sizeof(*moving) * movingLength);
+    obj[0].x +=obj[0].horizSpeed;
+
+    for (int i = 0; i < brickLength; i++)
+        if (IsCollision(obj[0], brick[i]))
+        {
+            obj[0].x -= obj[0].horizSpeed;
+            obj[0].horizSpeed = -obj[0].horizSpeed;
+            return;
+        }
+    
+    if (obj[0].cType == 'o')
+    {
+        TObject tmp = *obj;
+        VertMoveObject(&tmp);
+        if (tmp.isFly == TRUE)
+        {
+            obj[0].x -=obj[0].horizSpeed;
+            obj[0].horizSpeed = -obj[0].horizSpeed;
+        }
+    }
+}
+
+void HorisonMoveMap(float dx)
+{
+    mario.x -=dx;
+    for (int i = 0; i < brickLength; i++)
+        if (IsCollision(mario, brick[i]))
+        {
+            mario.x += dx;
+            return;
+        }
+    mario.x += dx;
+
+    for (int i = 0; i < brickLength; i++)
+        brick[i].x +=dx;
+    for (int i = 0; i < movingLength; i++)
+        moving[i].x +=dx;
 }
 
 void MarioCollision()
@@ -149,34 +230,6 @@ void MarioCollision()
         }
 }
 
-void HorisonMoveObject(TObject *obj)
-{
-    obj[0].x +=obj[0].horizSpeed;
-
-    for (int i = 0; i < brickLength; i++)
-        if (IsCollision(obj[0], brick[i]))
-        {
-            obj[0].x -= obj[0].horizSpeed;
-            obj[0].horizSpeed = -obj[0].horizSpeed;
-            return;
-        }
-    
-    if (obj[0].cType == 'o')
-    {
-        TObject tmp = *obj;
-        VertMoveObject(&tmp);
-        if (tmp.isFly == TRUE)
-        {
-            obj[0].x -=obj[0].horizSpeed;
-            obj[0].horizSpeed = -obj[0].horizSpeed;
-        }
-    }
-}
-
-BOOL IsPosInMap(int x, int y)
-{
-    return ((x >= 0) && (x < MAP_WIDTH) && (y >= 0) && (y < MAP_HEIGHT));
-}
 
 void PutObjectOnMap(TObject obj)
 {
@@ -191,51 +244,6 @@ void PutObjectOnMap(TObject obj)
                 map[j][i] = obj.cType;
 }
 
-void setCur(int x, int y)
-{
-    COORD coord;
-    coord.X = x;
-    coord.Y = y;
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-}
-
-void HorisonMoveMap(float dx)
-{
-    mario.x -=dx;
-    for (int i = 0; i < brickLength; i++)
-        if (IsCollision(mario, brick[i]))
-        {
-            mario.x += dx;
-            return;
-        }
-    mario.x += dx;
-
-    for (int i = 0; i < brickLength; i++)
-        brick[i].x +=dx;
-    for (int i = 0; i < movingLength; i++)
-        moving[i].x +=dx;
-}
-
-BOOL IsCollision(TObject o1, TObject o2)
-{
-    return ((o1.x + o1.width) > o2.x) && (o1.x < (o2.x + o2.width)) &&
-           ((o1.y + o1.height) > o2.y) && (o1.y < (o2.y + o2.height));
-}
-
-TObject *GetNewBrick()
-{
-    brickLength++;
-    brick = (TObject*)realloc(brick, sizeof(*brick) * brickLength);
-    return brick + brickLength - 1;
-}
-
-TObject *GetNewMoving()
-{
-    movingLength++;
-    moving = (TObject*)realloc(moving, sizeof(*moving) * movingLength);
-    return moving + movingLength - 1;
-}
-
 void PutScoreOnMap()
 {
     char c[30];
@@ -245,6 +253,21 @@ void PutScoreOnMap()
     {
         map[1][i + 5] = c[i];
     }
+}
+
+void setCur(int x, int y)
+{
+    COORD coord;
+    coord.X = x;
+    coord.Y = y;
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
+
+void DeleteMoving(int i)
+{
+    movingLength--;
+    moving[i] = moving[movingLength];
+    moving = (TObject*)realloc(moving, sizeof(*moving) * movingLength);
 }
 
 void CreateLevel(int lvl)
