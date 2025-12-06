@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <windows.h>
 
@@ -77,7 +78,8 @@ void clear_map()
 void draw_map()
 {
     for (int j = 0; j < MAP_HEIGHT; j++)
-        std::printf("%s\n", map[j]);
+        //std::printf("%s\n", map[j]);
+        std::cout << map[j];
 }
 
 void set_object_position(struct game_object *obj, float x_pos, float y_pos)
