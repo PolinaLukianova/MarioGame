@@ -8,6 +8,7 @@
 
 const int MAP_WIDTH  = 100;
 const int MAP_HEIGHT = 25;
+const int MAX_LEVEL = 3;
 
 struct game_object
 {
@@ -28,10 +29,12 @@ void init_object(struct game_object *obj, float x_pos, float y_pos, float obj_wi
 
 void create_level(int level, char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
                   game_object **bricks, int *bricks_count,
-                  game_object **moving_objects, int *moving_objects_count);
+                  game_object **moving_objects, int *moving_objects_count,
+                  int *current_level, int *score);
 void player_died(char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
                  game_object **bricks, int *bricks_count,
-                 game_object **moving_objects, int *moving_objects_count);
+                 game_object **moving_objects, int *moving_objects_count,
+                 int *current_level, int *score);
 
 bool is_collision(struct game_object obj_1, struct game_object obj_2);
 bool is_pos_inside_map(int x, int y);
@@ -40,28 +43,27 @@ struct game_object *create_brick(game_object **bricks, int *bricks_count);
 struct game_object *create_moving_object(game_object **moving_objects, int *moving_objects_count);
 
 void move_object_vertically(struct game_object *obj, char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
-                            game_object *bricks, int bricks_count,
-                            game_object **moving_objects, int *moving_objects_count);
+                            game_object **bricks, int *bricks_count,
+                            game_object **moving_objects, int *moving_objects_count,
+                            int *current_level, int *score);
 void move_object_horizontally(struct game_object *obj, char map[MAP_HEIGHT][MAP_WIDTH + 1],
-                              game_object *bricks, int bricks_count,
+                              game_object **bricks, int *bricks_count,
                               game_object **moving_objects, int *moving_objects_count);
 void move_map_horizontally(float delta_x, char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
                            game_object *bricks, int bricks_count,
                            game_object *moving_objects, int moving_objects_count);
 
 void check_mario_collision(char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
-                           game_object *moving_objects, int *moving_objects_count,
-                           game_object **bricks, int *bricks_count);
+                           game_object **moving_objects, int *moving_objects_count,
+                           game_object **bricks, int *bricks_count,
+                           int *current_level, int *score);
+
 void draw_object_on_map(struct game_object obj, char map[MAP_HEIGHT][MAP_WIDTH + 1]);
 void draw_score_on_map(char map[MAP_HEIGHT][MAP_WIDTH + 1], int score);
 
 void set_cursor_position(int x, int y);
 void delete_moving_object(int i, game_object **moving_objects, int *moving_objects_count);
 
-
-int current_level = 1;
-int score = 0;
-int max_level = 0;
 
 void clear_map(char map[MAP_HEIGHT][MAP_WIDTH + 1])
 {
@@ -99,11 +101,13 @@ void init_object(struct game_object *obj, float x_pos, float y_pos, float obj_wi
 
 void player_died(char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
                  game_object **bricks, int *bricks_count,
-                 game_object **moving_objects, int *moving_objects_count)
+                 game_object **moving_objects, int *moving_objects_count,
+                 int *current_level, int *score)
 {
     std::system("color 4F");
     Sleep(500);
-    create_level(current_level, map, mario, bricks, bricks_count, moving_objects, moving_objects_count);
+    create_level(*current_level, map, mario, bricks, bricks_count, moving_objects, moving_objects_count,
+                 current_level, score);
 }
 
 bool is_collision(struct game_object obj_1, struct game_object obj_2)
@@ -132,41 +136,43 @@ struct game_object *create_moving_object(game_object **moving_objects, int *movi
 }
 
 void move_object_vertically(struct game_object *obj, char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
-                            game_object *bricks, int bricks_count,
-                            game_object **moving_objects, int *moving_objects_count)
+                            game_object **bricks, int *bricks_count,
+                            game_object **moving_objects, int *moving_objects_count,
+                            int *current_level, int *score)
 {
     obj->is_flying = true;
     obj->vertical_speed +=0.05;
 
     set_object_position(obj, obj->x, obj->y + obj->vertical_speed);
 
-    for (int i = 0; i < bricks_count; i++)
+    for (int i = 0; i < *bricks_count; i++)
     {
-        if (is_collision(*obj, bricks[i]))
+        if (is_collision(*obj, (*bricks)[i]))
         {   
             if (obj->vertical_speed > 0)
                 obj->is_flying = false;
             
-            if ((bricks[i].type == '?') && (obj->vertical_speed < 0) && (obj == mario))
+            if (((*bricks)[i].type == '?') && (obj->vertical_speed < 0) && (obj == mario))
             {
-                bricks[i].type = '-';
+                (*bricks)[i].type = '-';
                 init_object(create_moving_object(moving_objects, moving_objects_count),
-                           bricks[i].x, bricks[i].y - 3, 3, 2, '$');
+                           (*bricks)[i].x, (*bricks)[i].y - 3, 3, 2, '$');
                 (*moving_objects)[*moving_objects_count - 1].vertical_speed = -0.7;
             }
 
             obj->y -= obj->vertical_speed;
             obj->vertical_speed = 0; 
 
-            if (bricks[i].type == '+')
+            if ((*bricks)[i].type == '+')
             {
-                current_level++;
-                if (current_level > max_level)
-                    current_level = 1;
+                (*current_level)++;
+                if (*current_level > MAX_LEVEL)
+                    *current_level = 1;
 
                 std::system("color 2F");
                 Sleep(500);
-                create_level(current_level, map, mario, &bricks, &bricks_count, moving_objects, moving_objects_count);
+                create_level(*current_level, map, mario, bricks, bricks_count,
+                            moving_objects, moving_objects_count, current_level, score);
             }
 
             break;
@@ -175,14 +181,14 @@ void move_object_vertically(struct game_object *obj, char map[MAP_HEIGHT][MAP_WI
 }
 
 void move_object_horizontally(struct game_object *obj, char map[MAP_HEIGHT][MAP_WIDTH + 1],
-                              game_object *bricks, int bricks_count,
+                              game_object **bricks, int *bricks_count,
                               game_object **moving_objects, int *moving_objects_count)
 {
     obj->x += obj->horizontal_speed;
 
-    for (int i = 0; i < bricks_count; i++)
+    for (int i = 0; i < *bricks_count; i++)
     {
-        if (is_collision(*obj, bricks[i]))
+        if (is_collision(*obj, (*bricks)[i]))
         {
             obj->x -= obj->horizontal_speed;
             obj->horizontal_speed = -obj->horizontal_speed;
@@ -193,7 +199,8 @@ void move_object_horizontally(struct game_object *obj, char map[MAP_HEIGHT][MAP_
     if (obj->type == 'o')
     {
         struct game_object tmp = *obj;
-        move_object_vertically(&tmp, map, NULL, bricks, bricks_count, moving_objects, moving_objects_count);
+        move_object_vertically(&tmp, map, NULL, bricks, bricks_count,
+                              moving_objects, moving_objects_count, NULL, NULL);
 
         if (tmp.is_flying == true)
         {
@@ -228,31 +235,33 @@ void move_map_horizontally(float delta_x, char map[MAP_HEIGHT][MAP_WIDTH + 1], g
 }
 
 void check_mario_collision(char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
-                           game_object *moving_objects, int *moving_objects_count,
-                           game_object **bricks, int *bricks_count)
+                           game_object **moving_objects, int *moving_objects_count,
+                           game_object **bricks, int *bricks_count,
+                           int *current_level, int *score)
 {
     for (int i = 0; i < *moving_objects_count; i++)
     {
-        if (is_collision(*mario, moving_objects[i]))
+        if (is_collision(*mario, (*moving_objects)[i]))
         {   
-            if (moving_objects[i].type == 'o')
+            if ((*moving_objects)[i].type == 'o')
             {
                 if ((mario->is_flying == true) && (mario->vertical_speed > 0) &&
-                    (mario->y + mario->height < moving_objects[i].y + moving_objects[i].height * 0.5f))
+                    (mario->y + mario->height < (*moving_objects)[i].y + (*moving_objects)[i].height * 0.5f))
                 {
-                    score += 50;
-                    delete_moving_object(i, &moving_objects, moving_objects_count);
+                    (*score) += 50;
+                    delete_moving_object(i, moving_objects, moving_objects_count);
                     i--;
                     continue;
                 }
                 else
-                    player_died(map, mario, bricks, bricks_count, &moving_objects, moving_objects_count);
+                    player_died(map, mario, bricks, bricks_count, moving_objects, moving_objects_count,
+                               current_level, score);
             }
 
-            if (moving_objects[i].type == '$')
+            if ((*moving_objects)[i].type == '$')
             {
-                score += 100;
-                delete_moving_object(i, &moving_objects, moving_objects_count);
+                (*score) += 100;
+                delete_moving_object(i, moving_objects, moving_objects_count);
                 i--;
                 continue;
             }
@@ -301,7 +310,8 @@ void delete_moving_object(int i, game_object **moving_objects, int *moving_objec
 
 void create_level(int level, char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *mario,
                   game_object **bricks, int *bricks_count,
-                  game_object **moving_objects, int *moving_objects_count)
+                  game_object **moving_objects, int *moving_objects_count,
+                  int *current_level, int *score)
 {   
     std::system("color 9F");
 
@@ -312,7 +322,7 @@ void create_level(int level, char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *m
     *moving_objects = (struct game_object*)realloc(*moving_objects, 0);
 
     init_object(mario, 39, 10, 3, 3, '@');
-    score = 0;
+    *score = 0;
 
     if (level == 1)
     {
@@ -363,8 +373,6 @@ void create_level(int level, char map[MAP_HEIGHT][MAP_WIDTH + 1], game_object *m
         init_object(create_moving_object(moving_objects, moving_objects_count), 120, 10, 3, 2, 'o');
         init_object(create_moving_object(moving_objects, moving_objects_count), 130, 10, 3, 2, 'o');
     }
-    
-    max_level = 3;
 }
 
 int main() 
@@ -378,7 +386,11 @@ int main()
     game_object *moving_objects = nullptr;
     int moving_objects_count = 0;
     
-    create_level(current_level, map, &mario, &bricks, &bricks_count, &moving_objects, &moving_objects_count);
+    int current_level = 1;
+    int score = 0;
+    
+    create_level(current_level, map, &mario, &bricks, &bricks_count, &moving_objects, &moving_objects_count,
+                 &current_level, &score);
 
     do
     {
@@ -394,18 +406,23 @@ int main()
             move_map_horizontally(-1, map, &mario, bricks, bricks_count, moving_objects, moving_objects_count);
 
         if (mario.y > MAP_HEIGHT)
-            player_died(map, &mario, &bricks, &bricks_count, &moving_objects, &moving_objects_count);
+            player_died(map, &mario, &bricks, &bricks_count, &moving_objects, &moving_objects_count,
+                       &current_level, &score);
         
-        move_object_vertically(&mario, map, &mario, bricks, bricks_count, &moving_objects, &moving_objects_count);
-        check_mario_collision(map, &mario, moving_objects, &moving_objects_count, &bricks, &bricks_count);
+        move_object_vertically(&mario, map, &mario, &bricks, &bricks_count, &moving_objects, &moving_objects_count,
+                              &current_level, &score);
+        check_mario_collision(map, &mario, &moving_objects, &moving_objects_count, &bricks, &bricks_count,
+                     &current_level, &score);
 
         for (int i = 0; i < bricks_count; i++)
             draw_object_on_map(bricks[i], map);
 
         for (int i = 0; i < moving_objects_count; i++)
         {
-            move_object_vertically(moving_objects + i, map, &mario, bricks, bricks_count, &moving_objects, &moving_objects_count);
-            move_object_horizontally(moving_objects + i, map, bricks, bricks_count, &moving_objects, &moving_objects_count);
+            move_object_vertically(moving_objects + i, map, &mario, &bricks, &bricks_count,
+                                  &moving_objects, &moving_objects_count, &current_level, &score);
+            move_object_horizontally(moving_objects + i, map, &bricks, &bricks_count,
+                                    &moving_objects, &moving_objects_count);
 
             if (moving_objects[i].y > MAP_HEIGHT)
             {
